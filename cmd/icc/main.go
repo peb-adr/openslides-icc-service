@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/OpenSlides/openslides-icc/cmd/log"
-	"github.com/OpenSlides/openslides-icc/internal/icc"
+	"github.com/OpenSlides/openslides-icc-service/cmd/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/icc"
 )
 
 func main() {

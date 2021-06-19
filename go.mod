@@ -1,4 +1,4 @@
-module github.com/OpenSlides/openslides-icc
+module github.com/OpenSlides/openslides-icc-service
 
 go 1.16
 

@@ -10,7 +10,7 @@ import (
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
 	messageBusRedis "github.com/OpenSlides/openslides-autoupdate-service/pkg/redis"
-	"github.com/OpenSlides/openslides-icc/cmd/log"
+	"github.com/OpenSlides/openslides-icc-service/cmd/log"
 )
 
 // Run starts the http server.

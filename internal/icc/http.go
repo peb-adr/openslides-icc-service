@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/OpenSlides/openslides-icc/cmd/log"
+	"github.com/OpenSlides/openslides-icc-service/cmd/log"
 )
 
 const (
@@ -19,6 +19,8 @@ type authenticater interface {
 	FromContext(context.Context) int
 }
 
+// receiver is a type with the function Receive(). It is a blocking function
+// that writes the icc-messages to the writer as soon as they occur.
 type receiver interface {
 	Receive(ctx context.Context, w io.Writer, uid int) error
 }
