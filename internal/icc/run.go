@@ -10,7 +10,8 @@ import (
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
 	messageBusRedis "github.com/OpenSlides/openslides-autoupdate-service/pkg/redis"
-	"github.com/OpenSlides/openslides-icc-service/cmd/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/redis"
 )
 
 // Run starts the http server.
@@ -45,7 +46,9 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 		return fmt.Errorf("building auth: %w", err)
 	}
 
-	service := New()
+	backend := redis.New(env["NOTIFY_REDIS_HOST"] + ":" + env["NOTIFY_REDIS_PORT"])
+
+	service := New(ctx, backend)
 
 	mux := http.NewServeMux()
 	handleReceive(mux, service, auth)
@@ -96,6 +99,9 @@ func defaultEnv(environment []string) map[string]string {
 		"MESSAGE_BUS_HOST": "localhost",
 		"MESSAGE_BUS_PORT": "6379",
 		"REDIS_TEST_CONN":  "true",
+
+		"NOTIFY_REDIS_HOST": "localhost",
+		"NOTIFY_REDIS_PORT": "6379",
 
 		"OPENSLIDES_DEVELOPMENT": "false",
 	}

@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/OpenSlides/openslides-icc-service/cmd/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/log"
 )
 
 const (
@@ -35,29 +35,6 @@ func handleReceive(mux *http.ServeMux, icc receiver, auth authenticater) {
 			uid := auth.FromContext(r.Context())
 			// TODO: Can anonymous receive icc messages?
 
-			// cid := icc.GenerateChannelID(uid)
-			// tid := icc.LastID()
-
-			// w.WriteHeader(http.StatusOK)
-
-			// if _, err := fmt.Fprintf(w, `{"channel_id": "%s"}`+"\n", cid); err != nil {
-			// 	handleError(w, err)
-			// 	return
-			// }
-			// w.(flusher).Flush()
-
-			// encoder := json.NewEncoder(w)
-			// var err error
-
-			// for {
-			// 	tid, err = icc.Receive(r.Context(), w, tid, uid, cid, encoder)
-			// 	if err != nil {
-			// 		handleError(w, err)
-			// 		return
-			// 	}
-			// 	w.(flusher).Flush()
-			// }
-
 			if err := icc.Receive(r.Context(), w, uid); err != nil {
 				handleErrorNoStatus(w, err)
 				return
@@ -82,24 +59,6 @@ func handleSend(mux *http.ServeMux, icc sender, auth authenticater) {
 				http.Error(w, MessageError{ErrNotAllowed, "Anonymous user can not send icc messages"}.Error(), 401)
 				return
 			}
-
-			// // TODO: Move validation and compacing to send function.
-			// bs, err := io.ReadAll(r.Body)
-			// if err != nil {
-			// 	handleError(w, fmt.Errorf("reading message: %w", err))
-			// 	return
-			// }
-
-			// if err := icc.ValidateRequest(bs, uid); err != nil {
-			// 	handleError(invalidRequestError{err})
-			// 	return
-			// }
-
-			// buf := new(bytes.Buffer)
-			// if err := json.Compact(buf, bs); err != nil {
-			// 	handleError(invalidRequestError{err})
-			// 	return
-			// }
 
 			if err := icc.Send(r.Body, uid); err != nil {
 				handleError(w, err)
@@ -134,7 +93,7 @@ func handleSendApplause(mux *http.ServeMux, icc applauser, auth authenticater) {
 	)
 }
 
-func handleErrorNoStatus(w http.ResponseWriter, err error) {
+func handleErrorNoStatus(w io.Writer, err error) {
 	msg := err.Error()
 
 	var errTyped interface {
@@ -151,8 +110,6 @@ func handleErrorNoStatus(w http.ResponseWriter, err error) {
 }
 
 func handleError(w http.ResponseWriter, err error) {
-	msg := err.Error()
-
 	var errTyped interface {
 		error
 		Type() string
@@ -161,11 +118,9 @@ func handleError(w http.ResponseWriter, err error) {
 	if !errors.As(err, &errTyped) {
 		// Unknown error. Handle as 500er.
 		status = 500
-		msg = ErrInternal.Error()
-		log.Info("Error: %v", err)
 	}
-	log.Debug("HTTP: Returning status %d", status)
 
 	w.WriteHeader(status)
-	fmt.Fprint(w, msg)
+	log.Debug("HTTP: Returning status %d", status)
+	handleErrorNoStatus(w, err)
 }

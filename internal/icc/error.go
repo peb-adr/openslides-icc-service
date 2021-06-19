@@ -53,6 +53,13 @@ type MessageError struct {
 	msg string
 }
 
+func newMessageError(t TypeError, format string, a ...interface{}) error {
+	return MessageError{
+		t,
+		fmt.Sprintf(format, a...),
+	}
+}
+
 func (err MessageError) Error() string {
 	return fmt.Sprintf(`{"error":"%s","msg":"%s"}`, err.Type(), err.msg)
 }

@@ -8,14 +8,15 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/OpenSlides/openslides-icc-service/cmd/log"
 	"github.com/OpenSlides/openslides-icc-service/internal/icc"
+	"github.com/OpenSlides/openslides-icc-service/internal/log"
 )
 
 func main() {
 	ctx, cancel := interruptContext()
 	defer cancel()
 
+	log.SetInfoLogger(golog.Default())
 	if os.Getenv("OPENSLIDES_DEVELOPMENT") != "" {
 		log.SetDebugLogger(golog.New(os.Stderr, "DEBUG ", golog.LstdFlags))
 	}
