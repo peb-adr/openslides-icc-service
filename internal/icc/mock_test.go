@@ -34,33 +34,41 @@ func (a *autherStub) FromContext(context.Context) int {
 }
 
 type receiverStub struct {
-	startMessage string
-	expectedErr  error
-	unblocking   bool
-
-	sendChan chan string
+	expectedMessage string
+	expectedErr     error
+	called          bool
 }
 
 func (r *receiverStub) Receive(ctx context.Context, w io.Writer, uid int) error {
-	if _, err := w.Write([]byte(r.startMessage)); err != nil {
+	r.called = true
+
+	if _, err := w.Write([]byte(r.expectedMessage)); err != nil {
 		return fmt.Errorf("writing first message: %w", err)
-	}
-
-	if r.unblocking {
-		return r.expectedErr
-	}
-
-	r.sendChan = make(chan string, 1)
-
-	for message := range r.sendChan {
-		if _, err := w.Write([]byte(message)); err != nil {
-			return fmt.Errorf("writing first message: %w", err)
-		}
 	}
 
 	return r.expectedErr
 }
 
-func (r *receiverStub) send(message string) {
-	r.sendChan <- message
+type senderStub struct {
+	expectedErr  error
+	called       bool
+	calledUserID int
+}
+
+func (s *senderStub) Send(r io.Reader, uid int) error {
+	s.called = true
+	s.calledUserID = uid
+	return s.expectedErr
+}
+
+type applauserStrub struct {
+	expectedErr  error
+	called       bool
+	calledUserID int
+}
+
+func (s *applauserStrub) Applause(uid int) error {
+	s.called = true
+	s.calledUserID = uid
+	return s.expectedErr
 }

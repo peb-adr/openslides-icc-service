@@ -25,10 +25,6 @@ type receiver interface {
 	Receive(ctx context.Context, w io.Writer, uid int) error
 }
 
-type flusher interface {
-	Flush()
-}
-
 // Notify registers the icc route.
 func handleReceive(mux *http.ServeMux, icc receiver, auth authenticater) {
 	mux.HandleFunc(
@@ -117,8 +113,8 @@ type applauser interface {
 	Applause(uid int) error
 }
 
-// handleApplause registers the icc/applause route.
-func handleApplause(mux *http.ServeMux, icc applauser, auth authenticater) {
+// handleSendApplause registers the icc/applause route.
+func handleSendApplause(mux *http.ServeMux, icc applauser, auth authenticater) {
 	mux.HandleFunc(
 		httpPath+"/applause",
 		func(w http.ResponseWriter, r *http.Request) {
@@ -139,11 +135,12 @@ func handleApplause(mux *http.ServeMux, icc applauser, auth authenticater) {
 }
 
 func handleErrorNoStatus(w http.ResponseWriter, err error) {
+	msg := err.Error()
+
 	var errTyped interface {
 		error
 		Type() string
 	}
-	msg := errTyped.Error()
 	if !errors.As(err, &errTyped) {
 		// Unknown error. Handle as 500er.
 		msg = ErrInternal.Error()
@@ -154,11 +151,12 @@ func handleErrorNoStatus(w http.ResponseWriter, err error) {
 }
 
 func handleError(w http.ResponseWriter, err error) {
+	msg := err.Error()
+
 	var errTyped interface {
 		error
 		Type() string
 	}
-	msg := errTyped.Error()
 	status := 400
 	if !errors.As(err, &errTyped) {
 		// Unknown error. Handle as 500er.
