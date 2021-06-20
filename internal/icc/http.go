@@ -25,7 +25,7 @@ type receiver interface {
 	Receive(ctx context.Context, w io.Writer, uid int) error
 }
 
-// Notify registers the icc route.
+// handleReceive registers the icc route.
 func handleReceive(mux *http.ServeMux, icc receiver, auth authenticater) {
 	mux.HandleFunc(
 		httpPath,

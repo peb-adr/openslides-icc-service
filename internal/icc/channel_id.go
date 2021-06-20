@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// channelID is an id for a notify channel.
+// channelID is an id for a icc channel.
 type channelID string
 
 // uid returnes the user id that was used to create the channel id. Returns 0

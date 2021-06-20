@@ -15,10 +15,10 @@ import (
 
 // Backend stores the icc messages.
 type Backend interface {
-	// SendNotify saves a valid icc message.
-	SendNotify([]byte) error
+	// SendICC saves a valid icc message.
+	SendICC([]byte) error
 
-	// ReceiveNotify is a blocking function that receives the messages.
+	// ReceiveICC is a blocking function that receives the messages.
 	//
 	// The first call returnes the first icc message, the next call the second
 	// an so on. If there are no more messages to read, the function blocks
@@ -26,15 +26,14 @@ type Backend interface {
 	//
 	// It is expected, that only one goroutine is calling this function. The
 	// Backend keeps track what the last send message was.
-	ReceiveNotify(ctx context.Context) (message []byte, err error)
+	ReceiveICC(ctx context.Context) (message []byte, err error)
 
-	// SendApplause saves an applause fro the user. A user can save as many
-	// applause as he wonts, but the backend only counds it once per user in a
-	// given time.
-	SendApplause(userID int) error
+	// SendApplause saves an applause for the user at a given time as unix time
+	// stamp.
+	SendApplause(userID int, time int64) error
 
-	// ReceiveApplause returned all applause since a given time in seconds. Each user is
-	// only called once.
+	// ReceiveApplause returned all applause since a given time (unix time
+	// stamp). Each user is only called once.
 	ReceiveApplause(since int64) (int, error)
 }
 
@@ -59,11 +58,11 @@ func New(ctx context.Context, b Backend) *ICC {
 	return &icc
 }
 
-// listen waits for notify messages from the backend and saves them into the
+// listen waits for ICCges from the backend and saves them into the
 // topic.
 func (icc *ICC) listen(ctx context.Context) {
 	for {
-		m, err := icc.backend.ReceiveNotify(ctx)
+		m, err := icc.backend.ReceiveICC(ctx)
 		if err != nil {
 			var closing interface {
 				Closing()
@@ -72,7 +71,7 @@ func (icc *ICC) listen(ctx context.Context) {
 				return
 			}
 
-			log.Info("Notify: Can not receive data from backend: %v", err)
+			log.Info("Error: Can not receive data from backend: %v", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -158,7 +157,7 @@ func (icc *ICC) Send(r io.Reader, uid int) error {
 		return fmt.Errorf("compacting message: %w", err)
 	}
 
-	if err := icc.backend.SendNotify(buf.Bytes()); err != nil {
+	if err := icc.backend.SendICC(buf.Bytes()); err != nil {
 		return fmt.Errorf("sending message to backend: %w", err)
 	}
 
@@ -182,11 +181,11 @@ func validateMessage(m []byte, userID int) error {
 	}
 
 	if message.Name == "" {
-		return fmt.Errorf("notify does not have required field `name`")
+		return fmt.Errorf("icc message does not have required field `name`")
 	}
 
 	if message.Name == "applause" {
-		return fmt.Errorf("notify name can not be applause")
+		return fmt.Errorf("icc message name can not be applause")
 	}
 	return nil
 }
