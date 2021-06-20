@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
-	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
 	messageBusRedis "github.com/OpenSlides/openslides-autoupdate-service/pkg/redis"
 	"github.com/OpenSlides/openslides-icc-service/internal/log"
 	"github.com/OpenSlides/openslides-icc-service/internal/redis"
@@ -30,11 +29,6 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 		return fmt.Errorf("building message bus: %w", err)
 	}
 
-	// ds, err := buildDatastore(env, messageBus, ctx.Done(), errHandler)
-	// if err != nil {
-	// 	return fmt.Errorf("building datastore: %w", err)
-	// }
-
 	auth, err := buildAuth(
 		env,
 		secret,
@@ -46,7 +40,7 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 		return fmt.Errorf("building auth: %w", err)
 	}
 
-	backend := redis.New(env["NOTIFY_REDIS_HOST"] + ":" + env["NOTIFY_REDIS_PORT"])
+	backend := redis.New(env["ICC_REDIS_HOST"] + ":" + env["ICC_REDIS_PORT"])
 
 	service := New(ctx, backend)
 
@@ -55,7 +49,7 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 	handleSend(mux, service, auth)
 	handleSendApplause(mux, service, auth)
 
-	listenAddr := env["IDD_HOST"] + ":" + env["ICC_PORT"]
+	listenAddr := env["ICC_HOST"] + ":" + env["ICC_PORT"]
 	srv := &http.Server{Addr: listenAddr, Handler: mux}
 
 	// Shutdown logic in separate goroutine.
@@ -86,22 +80,13 @@ func defaultEnv(environment []string) map[string]string {
 		"ICC_HOST": "",
 		"ICC_PORT": "9013",
 
-		"DATASTORE_READER_HOST":     "localhost",
-		"DATASTORE_READER_PORT":     "9010",
-		"DATASTORE_READER_PROTOCOL": "http",
-
 		"AUTH":          "fake",
 		"AUTH_PROTOCOL": "http",
 		"AUTH_HOST":     "localhost",
 		"AUTH_PORT":     "9004",
 
-		"MESSAGING":        "fake",
-		"MESSAGE_BUS_HOST": "localhost",
-		"MESSAGE_BUS_PORT": "6379",
-		"REDIS_TEST_CONN":  "true",
-
-		"NOTIFY_REDIS_HOST": "localhost",
-		"NOTIFY_REDIS_PORT": "6379",
+		"ICC_REDIS_HOST": "localhost",
+		"ICC_REDIS_PORT": "6379",
 
 		"OPENSLIDES_DEVELOPMENT": "false",
 	}
@@ -149,14 +134,6 @@ func buildErrHandler() func(err error) {
 			log.Info("Error: %v", err)
 		}
 	}
-}
-
-func buildDatastore(env map[string]string, receiver datastore.Updater, closed <-chan struct{}, errHandler func(error)) (*datastore.Datastore, error) {
-	protocol := env["DATASTORE_READER_PROTOCOL"]
-	host := env["DATASTORE_READER_HOST"]
-	port := env["DATASTORE_READER_PORT"]
-	url := protocol + "://" + host + ":" + port
-	return datastore.New(url, closed, errHandler, receiver), nil
 }
 
 // buildAuth returns the auth service needed by the http server.
@@ -218,7 +195,6 @@ func (a authStub) FromContext(ctx context.Context) int {
 }
 
 type messageBus interface {
-	datastore.Updater
 	auth.LogoutEventer
 }
 
