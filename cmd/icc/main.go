@@ -4,25 +4,25 @@ import (
 	"context"
 	"fmt"
 	"io"
-	golog "log"
+	"log"
+
 	"os"
 	"os/signal"
 
-	"github.com/OpenSlides/openslides-icc-service/internal/icc"
-	"github.com/OpenSlides/openslides-icc-service/internal/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
+	"github.com/OpenSlides/openslides-icc-service/internal/run"
 )
 
 func main() {
 	ctx, cancel := interruptContext()
 	defer cancel()
 
-	log.SetInfoLogger(golog.Default())
+	icclog.SetInfoLogger(log.Default())
 	if os.Getenv("OPENSLIDES_DEVELOPMENT") != "" {
-		log.SetDebugLogger(golog.New(os.Stderr, "DEBUG ", golog.LstdFlags))
+		icclog.SetDebugLogger(log.New(os.Stderr, "DEBUG ", log.LstdFlags))
 	}
-
-	if err := icc.Run(ctx, os.Environ(), secret); err != nil {
-		log.Info("Error: %v", err)
+	if err := run.Run(ctx, os.Environ(), secret); err != nil {
+		icclog.Info("Error: %v", err)
 	}
 }
 

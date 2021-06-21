@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSlides/openslides-icc-service/internal/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -49,7 +49,7 @@ func (r *Redis) Wait(ctx context.Context) {
 		if err == nil {
 			return
 		}
-		log.Info("Waiting for redis: %v", err)
+		icclog.Info("Waiting for redis: %v", err)
 		time.Sleep(500 * time.Millisecond)
 	}
 }
@@ -127,7 +127,6 @@ func (r *Redis) SendApplause(userID int, time int64) error {
 }
 
 // ReceiveApplause returned all applause since a given time as unix time stamp.
-// Each user is only called once.
 func (r *Redis) ReceiveApplause(since int64) (int, error) {
 	conn := r.pool.Get()
 	defer conn.Close()

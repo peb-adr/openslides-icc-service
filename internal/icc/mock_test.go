@@ -1,38 +1,10 @@
-package icc
+package icc_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net/http"
 )
-
-type authError struct{}
-
-func (authError) Error() string {
-	return `{"error":"auth","msg":"auth error"}`
-}
-
-func (authError) Type() string {
-	return "auth"
-}
-
-type autherStub struct {
-	userID  int
-	authErr bool
-}
-
-func (a *autherStub) Authenticate(w http.ResponseWriter, r *http.Request) (context.Context, error) {
-	if a.authErr {
-		return nil, authError{}
-	}
-	return r.Context(), nil
-}
-
-func (a *autherStub) FromContext(context.Context) int {
-	return a.userID
-}
 
 type receiverStub struct {
 	expectedMessage string
@@ -57,18 +29,6 @@ type senderStub struct {
 }
 
 func (s *senderStub) Send(r io.Reader, uid int) error {
-	s.called = true
-	s.calledUserID = uid
-	return s.expectedErr
-}
-
-type applauserStrub struct {
-	expectedErr  error
-	called       bool
-	calledUserID int
-}
-
-func (s *applauserStrub) Applause(uid int) error {
 	s.called = true
 	s.calledUserID = uid
 	return s.expectedErr
@@ -110,12 +70,4 @@ func (b *backendStub) ReceiveICC(ctx context.Context) (message []byte, err error
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-func (b *backendStub) SendApplause(userID int, time int64) error {
-	return errors.New("TODO")
-}
-
-func (b *backendStub) ReceiveApplause(since int64) (int, error) {
-	return 0, errors.New("TODO")
 }

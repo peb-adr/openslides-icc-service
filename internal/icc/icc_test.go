@@ -1,4 +1,4 @@
-package icc
+package icc_test
 
 import (
 	"context"
@@ -8,19 +8,22 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/OpenSlides/openslides-icc-service/internal/icc"
+	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
 )
 
 func TestSend(t *testing.T) {
 	backend := newBackendStrub()
-	icc := New(context.Background(), backend)
+	icc := icc.New(context.Background(), backend)
 
 	t.Run("invalid json", func(t *testing.T) {
 		defer backend.reset()
 
 		err := icc.Send(strings.NewReader(`{123`), 1)
 
-		if !errors.Is(err, ErrInvalid) {
-			t.Errorf("send() returned err `%s`, expected `%s`", err, ErrInvalid.Error())
+		if !errors.Is(err, iccerror.ErrInvalid) {
+			t.Errorf("send() returned err `%s`, expected `%s`", err, iccerror.ErrInvalid.Error())
 		}
 	})
 
@@ -29,8 +32,8 @@ func TestSend(t *testing.T) {
 
 		err := icc.Send(strings.NewReader(`{"to_users":1,"message":"hans"}`), 1)
 
-		if !errors.Is(err, ErrInvalid) {
-			t.Errorf("send() returned err `%s`, expected `%s`", err, ErrInvalid.Error())
+		if !errors.Is(err, iccerror.ErrInvalid) {
+			t.Errorf("send() returned err `%s`, expected `%s`", err, iccerror.ErrInvalid.Error())
 		}
 	})
 
@@ -43,7 +46,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, ErrInvalid) {
+		if errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 
@@ -59,7 +62,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, ErrInvalid) {
+		if errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 	})
@@ -74,23 +77,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, ErrInvalid) {
-			t.Fatalf("send returned unexpected error: %v", err)
-		}
-	})
-
-	t.Run("name == applause", func(t *testing.T) {
-		defer backend.reset()
-
-		err := icc.Send(strings.NewReader(`
-		{
-			"channel_id": "server:1:2",
-			"name": "applause",
-			"to_users": [2], 
-			"message": "hans"
-		}`), 1)
-
-		if errors.Is(err, ErrInvalid) {
+		if errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 	})
@@ -123,7 +110,7 @@ func TestSend(t *testing.T) {
 
 func TestReceive(t *testing.T) {
 	backend := newBackendStrub()
-	icc := New(context.Background(), backend)
+	icc := icc.New(context.Background(), backend)
 
 	r, w := io.Pipe()
 	decoder := json.NewDecoder(r)
@@ -211,3 +198,32 @@ func TestReceive(t *testing.T) {
 		t.Fatalf("receive returned an unexpected error: %v", err)
 	}
 }
+
+// func TestApplause(t *testing.T) {
+// 	backend := newBackendStrub()
+// 	icc := New(context.Background(), backend)
+
+// 	r, w := io.Pipe()
+// 	decoder := json.NewDecoder(r)
+
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
+
+// 	receiveDone := make(chan error, 1)
+// 	go func() {
+// 		receiveDone <- icc.Receive(ctx, w, 2)
+// 	}()
+
+// 	t.Run("Receive no applause at start", func(t *testing.T) {
+// 		var receive struct {
+// 			Applause int `json:"applause"`
+// 			Base     int `json:"base"`
+// 		}
+// 		if err := decoder.Decode(&receive); err != nil {
+// 			t.Fatalf("decoding first message: %v", err)
+// 		}
+
+// 		if receive
+
+// 	})
+// }

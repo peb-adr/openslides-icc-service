@@ -9,7 +9,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/OpenSlides/openslides-icc-service/internal/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
+	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
 	"github.com/ostcar/topic"
 )
 
@@ -27,14 +28,6 @@ type Backend interface {
 	// It is expected, that only one goroutine is calling this function. The
 	// Backend keeps track what the last send message was.
 	ReceiveICC(ctx context.Context) (message []byte, err error)
-
-	// SendApplause saves an applause for the user at a given time as unix time
-	// stamp.
-	SendApplause(userID int, time int64) error
-
-	// ReceiveApplause returned all applause since a given time (unix time
-	// stamp). Each user is only called once.
-	ReceiveApplause(since int64) (int, error)
 }
 
 // ICC holds the state of the service.
@@ -71,7 +64,7 @@ func (icc *ICC) listen(ctx context.Context) {
 				return
 			}
 
-			log.Info("Error: Can not receive data from backend: %v", err)
+			icclog.Info("Error: Can not receive data from backend: %v", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -165,7 +158,13 @@ func (icc *ICC) Send(r io.Reader, uid int) error {
 }
 
 // Applause saves an applause event from the given user.
-func (icc *ICC) Applause(uid int) error {
+func (icc *ICC) Applause(meetingID int, uid int) error {
+	return errors.New("TODO")
+}
+
+// ReceiveApplause is a blocking function that writes all applause message for a
+// specific meeting to the writer.
+func (icc *ICC) ReceiveApplause(ctx context.Context, w io.Writer, meetingID int) error {
 	return errors.New("TODO")
 }
 
@@ -173,7 +172,7 @@ func validateMessage(m []byte, userID int) error {
 	var message iccMessage
 
 	if err := json.Unmarshal(m, &message); err != nil {
-		return newMessageError(ErrInvalid, "invalid json: %v", err)
+		return iccerror.NewMessageError(iccerror.ErrInvalid, "invalid json: %v", err)
 	}
 
 	if message.ChannelID.uid() != userID {
@@ -184,9 +183,6 @@ func validateMessage(m []byte, userID int) error {
 		return fmt.Errorf("icc message does not have required field `name`")
 	}
 
-	if message.Name == "applause" {
-		return fmt.Errorf("icc message name can not be applause")
-	}
 	return nil
 }
 

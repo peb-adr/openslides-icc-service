@@ -1,4 +1,4 @@
-package icc
+package run
 
 import (
 	"context"
@@ -9,7 +9,9 @@ import (
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	messageBusRedis "github.com/OpenSlides/openslides-autoupdate-service/pkg/redis"
-	"github.com/OpenSlides/openslides-icc-service/internal/log"
+	"github.com/OpenSlides/openslides-icc-service/internal/icc"
+	"github.com/OpenSlides/openslides-icc-service/internal/icchttp"
+	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
 	"github.com/OpenSlides/openslides-icc-service/internal/redis"
 )
 
@@ -42,12 +44,12 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 
 	backend := redis.New(env["ICC_REDIS_HOST"] + ":" + env["ICC_REDIS_PORT"])
 
-	service := New(ctx, backend)
+	service := icc.New(ctx, backend)
 
 	mux := http.NewServeMux()
-	handleReceive(mux, service, auth)
-	handleSend(mux, service, auth)
-	handleSendApplause(mux, service, auth)
+	icc.HandleReceive(mux, service, auth)
+	icc.HandleSend(mux, service, auth)
+	//icc.HandleSendApplause(mux, service, auth)
 
 	listenAddr := env["ICC_HOST"] + ":" + env["ICC_PORT"]
 	srv := &http.Server{Addr: listenAddr, Handler: mux}
@@ -65,7 +67,7 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 		wait <- nil
 	}()
 
-	log.Info("Listen on %s", listenAddr)
+	icclog.Info("Listen on %s", listenAddr)
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		return fmt.Errorf("HTTP Server failed: %v", err)
 	}
@@ -131,7 +133,7 @@ func buildErrHandler() func(err error) {
 			Closing()
 		}
 		if !errors.As(err, &closing) {
-			log.Info("Error: %v", err)
+			icclog.Info("Error: %v", err)
 		}
 	}
 }
@@ -143,11 +145,11 @@ func buildAuth(
 	receiver auth.LogoutEventer,
 	closed <-chan struct{},
 	errHandler func(error),
-) (authenticater, error) {
+) (icchttp.Authenticater, error) {
 	method := env["AUTH"]
 	switch method {
 	case "ticket":
-		log.Info("Auth Method: ticket")
+		icclog.Info("Auth Method: ticket")
 		tokenKey, err := secret("auth_token_key", getSecret, env["OPENSLIDES_DEVELOPMENT"] != "false")
 		if err != nil {
 			return nil, fmt.Errorf("getting token secret: %w", err)
@@ -159,7 +161,7 @@ func buildAuth(
 		}
 
 		if tokenKey == authDebugKey || cookieKey == authDebugKey {
-			log.Info("Auth with debug key")
+			icclog.Info("Auth with debug key")
 		}
 
 		protocol := env["AUTH_PROTOCOL"]
@@ -167,12 +169,12 @@ func buildAuth(
 		port := env["AUTH_PORT"]
 		url := protocol + "://" + host + ":" + port
 
-		log.Info("Auth Service: %s", url)
+		icclog.Info("Auth Service: %s", url)
 
 		return auth.New(url, receiver, closed, errHandler, []byte(tokenKey), []byte(cookieKey))
 
 	case "fake":
-		log.Info("Auth Method: FakeAuth (User ID 1 for all requests)")
+		icclog.Info("Auth Method: FakeAuth (User ID 1 for all requests)")
 		return authStub(1), nil
 
 	default:
@@ -200,7 +202,7 @@ type messageBus interface {
 
 func buildMessageBus(env map[string]string) (messageBus, error) {
 	serviceName := env["MESSAGING"]
-	log.Info("Messaging Service: %s", serviceName)
+	icclog.Info("Messaging Service: %s", serviceName)
 
 	var conn messageBusRedis.Connection
 	switch serviceName {

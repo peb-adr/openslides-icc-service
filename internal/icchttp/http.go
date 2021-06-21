@@ -1,0 +1,63 @@
+// Package icchttp contains helper function to handle http requests.
+//
+// The handers are defined by its own package (icc, applause...).
+package icchttp
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
+	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
+)
+
+const (
+	// Path is the basic path for all handlers of this service.
+	Path = "/system/icc"
+)
+
+// Authenticater knowns how to authenticate a request.
+type Authenticater interface {
+	Authenticate(http.ResponseWriter, *http.Request) (context.Context, error)
+	FromContext(context.Context) int
+}
+
+// ErrorNoStatus is like Error(), but does not write a status message.
+func ErrorNoStatus(w io.Writer, err error) {
+	msg := err.Error()
+
+	var errTyped interface {
+		error
+		Type() string
+	}
+	if !errors.As(err, &errTyped) {
+		// Unknown error. Handle as 500er.
+		msg = iccerror.ErrInternal.Error()
+		icclog.Info("Error: %v", err)
+	}
+
+	fmt.Fprint(w, msg)
+}
+
+// Error sends an error message to the client as json-message.
+//
+// If the error does not have a Type() string message, it is handled as 500er.
+// In other case, it is handled as 400er.
+func Error(w http.ResponseWriter, err error) {
+	var errTyped interface {
+		error
+		Type() string
+	}
+	status := 400
+	if !errors.As(err, &errTyped) {
+		// Unknown error. Handle as 500er.
+		status = 500
+	}
+
+	w.WriteHeader(status)
+	icclog.Debug("HTTP: Returning status %d", status)
+	ErrorNoStatus(w, err)
+}

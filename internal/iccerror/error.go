@@ -1,4 +1,4 @@
-package icc
+package iccerror
 
 import "fmt"
 
@@ -53,7 +53,8 @@ type MessageError struct {
 	msg string
 }
 
-func newMessageError(t TypeError, format string, a ...interface{}) error {
+// NewMessageError creates an error of a specific type with a different message.
+func NewMessageError(t TypeError, format string, a ...interface{}) error {
 	return MessageError{
 		t,
 		fmt.Sprintf(format, a...),
