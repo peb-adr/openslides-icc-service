@@ -7,13 +7,15 @@ import (
 )
 
 type receiverStub struct {
-	expectedMessage string
-	expectedErr     error
-	called          bool
+	expectedMessage  string
+	expectedErr      error
+	called           bool
+	callledMeetingID int
 }
 
-func (r *receiverStub) Receive(ctx context.Context, w io.Writer, uid int) error {
+func (r *receiverStub) Receive(ctx context.Context, w io.Writer, meetingID, uid int) error {
 	r.called = true
+	r.callledMeetingID = meetingID
 
 	if _, err := w.Write([]byte(r.expectedMessage)); err != nil {
 		return fmt.Errorf("writing first message: %w", err)

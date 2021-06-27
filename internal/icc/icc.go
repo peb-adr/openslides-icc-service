@@ -76,7 +76,7 @@ type flusher interface {
 
 // Receive is a blocking function that sends data to w as soon as an icc event
 // happens.
-func (icc *ICC) Receive(ctx context.Context, w io.Writer, uid int) error {
+func (icc *ICC) Receive(ctx context.Context, w io.Writer, meetingID, uid int) error {
 	cid := icc.cIDGen.generate(uid)
 
 	if _, err := fmt.Fprintf(w, `{"channel_id": "%s"}`+"\n", cid); err != nil {
@@ -103,7 +103,7 @@ func (icc *ICC) Receive(ctx context.Context, w io.Writer, uid int) error {
 				return fmt.Errorf("decoding message: %w", err)
 			}
 
-			if !m.forMe(uid, cid) {
+			if !m.forMe(meetingID, uid, cid) {
 				continue
 			}
 
@@ -169,15 +169,15 @@ func validateMessage(message iccMessage, userID int) error {
 
 type iccMessage struct {
 	ChannelID  channelID       `json:"channel_id"`
-	ToAll      bool            `json:"to_all"`
-	ToUsers    []int           `json:"to_users"`
-	ToChannels []string        `json:"to_channels"`
+	ToMeeting  int             `json:"to_meeting,omitempty"`
+	ToUsers    []int           `json:"to_users,omitempty"`
+	ToChannels []string        `json:"to_channels,omitempty"`
 	Name       string          `json:"name"`
 	Message    json.RawMessage `json:"message"`
 }
 
-func (m iccMessage) forMe(uid int, cID channelID) bool {
-	if m.ToAll {
+func (m iccMessage) forMe(meetingID, uid int, cID channelID) bool {
+	if m.ToMeeting != 0 && m.ToMeeting == meetingID {
 		return true
 	}
 

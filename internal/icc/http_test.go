@@ -15,11 +15,37 @@ import (
 func TestHandleReceive(t *testing.T) {
 	url := "/system/icc"
 
+	t.Run("Anonymous", func(t *testing.T) {
+		auther := icctest.AutherStub{}
+		receiver := receiverStub{
+			expectedMessage: "my answer",
+		}
+		mux := http.NewServeMux()
+		icc.HandleReceive(mux, &receiver, &auther)
+		resp := httptest.NewRecorder()
+
+		mux.ServeHTTP(resp, httptest.NewRequest("GET", url, nil))
+
+		if resp.Result().StatusCode != 401 {
+			t.Fatalf("handler returned status %s: %s", resp.Result().Status, resp.Body.String())
+		}
+
+		if !strings.Contains(resp.Body.String(), iccerror.ErrNotAllowed.Type()) {
+			t.Errorf("handler returned message `%s`, expected to contain `%s`", resp.Body.String(), iccerror.ErrNotAllowed.Type())
+		}
+
+		if receiver.called {
+			t.Errorf("handler did call the reciver")
+		}
+	})
+
 	t.Run("Receiver is called", func(t *testing.T) {
 		receiver := receiverStub{
 			expectedMessage: "my answer",
 		}
-		auther := icctest.AutherStub{}
+		auther := icctest.AutherStub{
+			UserID: 1,
+		}
 		mux := http.NewServeMux()
 		icc.HandleReceive(mux, &receiver, &auther)
 		resp := httptest.NewRecorder()
@@ -39,12 +65,44 @@ func TestHandleReceive(t *testing.T) {
 		}
 	})
 
+	t.Run("Receiver is called with meetingID", func(t *testing.T) {
+		receiver := receiverStub{
+			expectedMessage: "my answer",
+		}
+		auther := icctest.AutherStub{
+			UserID: 1,
+		}
+		mux := http.NewServeMux()
+		icc.HandleReceive(mux, &receiver, &auther)
+		resp := httptest.NewRecorder()
+
+		mux.ServeHTTP(resp, httptest.NewRequest("GET", url+"?meeting_id=5", nil))
+
+		if resp.Result().StatusCode != 200 {
+			t.Fatalf("handler returned status %s: %s", resp.Result().Status, resp.Body.String())
+		}
+
+		if !receiver.called {
+			t.Errorf("receiver was not called")
+		}
+
+		if receiver.callledMeetingID != 5 {
+			t.Errorf("receiver was called witht meetingID %d, expected 5", receiver.callledMeetingID)
+		}
+
+		if resp.Body.String() != "my answer" {
+			t.Errorf("resp body is `%s`, expected `my answer`", resp.Body.String())
+		}
+	})
+
 	t.Run("Receiver has an internal error", func(t *testing.T) {
 		myError := errors.New("Test error")
 		receiver := receiverStub{
 			expectedErr: myError,
 		}
-		auther := icctest.AutherStub{}
+		auther := icctest.AutherStub{
+			UserID: 1,
+		}
 		mux := http.NewServeMux()
 		icc.HandleReceive(mux, &receiver, &auther)
 		resp := httptest.NewRecorder()
@@ -65,7 +123,9 @@ func TestHandleReceive(t *testing.T) {
 		receiver := receiverStub{
 			expectedErr: myError,
 		}
-		auther := icctest.AutherStub{}
+		auther := icctest.AutherStub{
+			UserID: 1,
+		}
 		mux := http.NewServeMux()
 		icc.HandleReceive(mux, &receiver, &auther)
 		resp := httptest.NewRecorder()

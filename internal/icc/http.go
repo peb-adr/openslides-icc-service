@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
 	"github.com/OpenSlides/openslides-icc-service/internal/icchttp"
@@ -13,7 +14,7 @@ import (
 // Receiver is a type with the function Receive(). It is a blocking function
 // that writes the icc-messages to the writer as soon as they occur.
 type Receiver interface {
-	Receive(ctx context.Context, w io.Writer, uid int) error
+	Receive(ctx context.Context, w io.Writer, meetingID, uid int) error
 }
 
 // HandleReceive registers the icc route.
@@ -24,9 +25,23 @@ func HandleReceive(mux *http.ServeMux, icc Receiver, auth icchttp.Authenticater)
 			w.Header().Set("Content-Type", "application/octet-stream")
 
 			uid := auth.FromContext(r.Context())
-			// TODO: Can anonymous receive icc messages?
+			if uid == 0 {
+				w.WriteHeader(401)
+				icchttp.ErrorNoStatus(w, iccerror.NewMessageError(iccerror.ErrNotAllowed, "Anonymous user can not receive icc messages."))
+				return
+			}
 
-			if err := icc.Receive(r.Context(), w, uid); err != nil {
+			vars := r.URL.Query()["meeting_id"]
+			meetingID := 0
+			if len(vars) != 0 {
+				var err error
+				meetingID, err = strconv.Atoi(vars[0])
+				if err != nil {
+					icchttp.Error(w, iccerror.NewMessageError(iccerror.ErrInvalid, "url query meeting_id has to be an int"))
+				}
+			}
+
+			if err := icc.Receive(r.Context(), w, meetingID, uid); err != nil {
 				icchttp.ErrorNoStatus(w, fmt.Errorf("receiving icc messages: %w", err))
 				return
 			}

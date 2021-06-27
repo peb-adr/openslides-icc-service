@@ -37,7 +37,7 @@ func TestSend(t *testing.T) {
 		}
 	})
 
-	t.Run("no from", func(t *testing.T) {
+	t.Run("no channel_id", func(t *testing.T) {
 		defer backend.reset()
 
 		err := icc.Send(strings.NewReader(`
@@ -46,7 +46,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, iccerror.ErrInvalid) {
+		if !errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 
@@ -62,7 +62,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, iccerror.ErrInvalid) {
+		if !errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 	})
@@ -77,7 +77,7 @@ func TestSend(t *testing.T) {
 			"message": "hans"
 		}`), 1)
 
-		if errors.Is(err, iccerror.ErrInvalid) {
+		if !errors.Is(err, iccerror.ErrInvalid) {
 			t.Fatalf("send returned unexpected error: %v", err)
 		}
 	})
@@ -101,9 +101,9 @@ func TestSend(t *testing.T) {
 			t.Fatalf("backend received %d messages, expected 1", len(backend.receivedMessages))
 		}
 
-		expected := `{"channel_id":"server:1:2","name":"message-name","to_users":[2],"message":"hans"}`
+		expected := `{"channel_id":"server:1:2","to_users":[2],"name":"message-name","message":"hans"}`
 		if string(backend.receivedMessages[0]) != expected {
-			t.Errorf("received message %s, expected %s", backend.receivedMessages[0], expected)
+			t.Errorf("received message:\n%s\n\nexpected:\n%s", backend.receivedMessages[0], expected)
 		}
 	})
 }
@@ -120,7 +120,7 @@ func TestReceive(t *testing.T) {
 
 	receiveDone := make(chan error, 1)
 	go func() {
-		receiveDone <- icc.Receive(ctx, w, 2)
+		receiveDone <- icc.Receive(ctx, w, 1, 2)
 	}()
 
 	t.Run("Get channel id", func(t *testing.T) {
@@ -165,6 +165,29 @@ func TestReceive(t *testing.T) {
 
 		if string(iccMessage.Message) != `"hans"` {
 			t.Errorf("message.message == %s, expected hans", iccMessage.Message)
+		}
+	})
+
+	t.Run("Message for meeting", func(t *testing.T) {
+		if err := icc.Send(strings.NewReader(`{"channel_id":"server:1:2","name":"to-meeting-name","to_meeting":1,"message":"klaus"}`), 1); err != nil {
+			t.Fatalf("sending message: %v", err)
+		}
+
+		var iccMessage struct {
+			ToMeeting int             `json:"to_meeting"`
+			Name      string          `json:"name"`
+			Message   json.RawMessage `json:"message"`
+		}
+		if err := decoder.Decode(&iccMessage); err != nil {
+			t.Errorf("decoding first message: %v", err)
+		}
+
+		if iccMessage.Name != "to-meeting-name" {
+			t.Errorf("message.name == %s, expected to-meeting-name", iccMessage.Name)
+		}
+
+		if string(iccMessage.Message) != `"klaus"` {
+			t.Errorf("message.message == %s, expected klaus", iccMessage.Message)
 		}
 	})
 

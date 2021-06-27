@@ -49,7 +49,7 @@ func (err TypeError) Error() string {
 
 // MessageError is a TypeError with an individuel error message.
 type MessageError struct {
-	TypeError
+	t   TypeError
 	msg string
 }
 
@@ -62,9 +62,9 @@ func NewMessageError(t TypeError, format string, a ...interface{}) error {
 }
 
 func (err MessageError) Error() string {
-	return fmt.Sprintf(`{"error":"%s","msg":"%s"}`, err.Type(), err.msg)
+	return fmt.Sprintf(`{"error":"%s","msg":"%s"}`, err.t.Type(), err.msg)
 }
 
 func (err MessageError) Unwrap() error {
-	return err.TypeError
+	return err.t
 }

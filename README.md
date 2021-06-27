@@ -83,8 +83,10 @@ printed immediately.
 To listen to messages, you can use this command:
 
 ```
-curl -N localhot:9013/system/icc
+curl -N localhot:9013/system/icc?meeting_id=5
 ```
+
+The meeting_id query argument is optional.
 
 The output has the [json lines](https://jsonlines.org/) format.
 
@@ -99,7 +101,27 @@ Each other other line is one ICC message. It has the following format:
 
 ```
 {"sender_user_id":1,"sender_channel_id":"8NWRQy18:1:0","name":"my message title","message":"my message"}
-``` 
+```
+
+To send a message, you can use the following request:
+
+```
+curl localhost:9013/system/icc/send -d '{
+  "channel_id": "STRING_SEE_ABOVE",
+  "to_meeting": 5,
+  "to_users": [3,4],
+  "to_channels": "some:valid:channel_id",
+  "name": "my message title",
+  "message": {"any":"valid","json":true}
+}'
+```
+
+The example message would be received by all users that are in meeting 5, and to
+all connections of the user 3 and 4 and the connection with the channel id
+"some:valid:channel_id".
+
+Only one of the to_* fields is required. All other fields are required.
+
 
 ### Applause
 
