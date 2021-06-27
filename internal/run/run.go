@@ -82,13 +82,22 @@ func defaultEnv(environment []string) map[string]string {
 		"ICC_HOST": "",
 		"ICC_PORT": "9013",
 
+		"ICC_REDIS_HOST": "localhost",
+		"ICC_REDIS_PORT": "6379",
+
+		"DATASTORE_READER_HOST":     "localhost",
+		"DATASTORE_READER_PORT":     "9010",
+		"DATASTORE_READER_PROTOCOL": "http",
+
+		"MESSAGING":        "fake",
+		"MESSAGE_BUS_HOST": "localhost",
+		"MESSAGE_BUS_PORT": "6379",
+		"REDIS_TEST_CONN":  "true",
+
 		"AUTH":          "fake",
 		"AUTH_PROTOCOL": "http",
 		"AUTH_HOST":     "localhost",
 		"AUTH_PORT":     "9004",
-
-		"ICC_REDIS_HOST": "localhost",
-		"ICC_REDIS_PORT": "6379",
 
 		"OPENSLIDES_DEVELOPMENT": "false",
 	}
@@ -220,7 +229,7 @@ func buildMessageBus(env map[string]string) (messageBus, error) {
 	case "fake":
 		conn = messageBusRedis.BlockingConn{}
 	default:
-		return nil, fmt.Errorf("unknown messagin service %s", serviceName)
+		return nil, fmt.Errorf("unknown messagin service `%s`", serviceName)
 	}
 
 	return &messageBusRedis.Redis{Conn: conn}, nil

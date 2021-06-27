@@ -1,7 +1,6 @@
 package icc
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -44,7 +43,7 @@ type ICC struct {
 func New(ctx context.Context, b Backend) *ICC {
 	icc := ICC{
 		backend: b,
-		topic:   topic.New(),
+		topic:   topic.New(topic.WithClosed(ctx.Done())),
 	}
 
 	go icc.listen(ctx)
@@ -57,18 +56,16 @@ func (icc *ICC) listen(ctx context.Context) {
 	for {
 		m, err := icc.backend.ReceiveICC(ctx)
 		if err != nil {
-			var closing interface {
-				Closing()
-			}
-			if errors.As(err, &closing) {
+			if errors.Is(err, context.Canceled) {
 				return
 			}
 
-			icclog.Info("Error: Can not receive data from backend: %v", err)
+			icclog.Info("Error: can not receive data from backend: %v", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
+		icclog.Debug("Found icc message: `%s`", m)
 		icc.topic.Publish(string(m))
 	}
 }
@@ -136,51 +133,35 @@ func (icc *ICC) Receive(ctx context.Context, w io.Writer, uid int) error {
 
 // Send reads and saves the icc event from the given reader.
 func (icc *ICC) Send(r io.Reader, uid int) error {
-	bs, err := io.ReadAll(r)
-	if err != nil {
-		return fmt.Errorf("reading message: %w", err)
+	var message iccMessage
+	if err := json.NewDecoder(r).Decode(&message); err != nil {
+		return iccerror.NewMessageError(iccerror.ErrInvalid, "invalid json: %v", err)
 	}
 
-	if err := validateMessage(bs, uid); err != nil {
+	if err := validateMessage(message, uid); err != nil {
 		return fmt.Errorf("validate message: %w", err)
 	}
 
-	buf := new(bytes.Buffer)
-	if err := json.Compact(buf, bs); err != nil {
-		return fmt.Errorf("compacting message: %w", err)
+	bs, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("can not marshal icc message: %v", err)
 	}
 
-	if err := icc.backend.SendICC(buf.Bytes()); err != nil {
+	icclog.Debug("Saving icc message: `%s`", bs)
+	if err := icc.backend.SendICC(bs); err != nil {
 		return fmt.Errorf("sending message to backend: %w", err)
 	}
 
 	return nil
 }
 
-// Applause saves an applause event from the given user.
-func (icc *ICC) Applause(meetingID int, uid int) error {
-	return errors.New("TODO")
-}
-
-// ReceiveApplause is a blocking function that writes all applause message for a
-// specific meeting to the writer.
-func (icc *ICC) ReceiveApplause(ctx context.Context, w io.Writer, meetingID int) error {
-	return errors.New("TODO")
-}
-
-func validateMessage(m []byte, userID int) error {
-	var message iccMessage
-
-	if err := json.Unmarshal(m, &message); err != nil {
-		return iccerror.NewMessageError(iccerror.ErrInvalid, "invalid json: %v", err)
-	}
-
+func validateMessage(message iccMessage, userID int) error {
 	if message.ChannelID.uid() != userID {
-		return fmt.Errorf("invalid channel id")
+		return iccerror.NewMessageError(iccerror.ErrInvalid, "invalid channel id `%s`", message.ChannelID)
 	}
 
 	if message.Name == "" {
-		return fmt.Errorf("icc message does not have required field `name`")
+		return iccerror.NewMessageError(iccerror.ErrInvalid, "icc message does not have required field `name`")
 	}
 
 	return nil

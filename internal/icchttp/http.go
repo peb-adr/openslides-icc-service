@@ -27,6 +27,10 @@ type Authenticater interface {
 
 // ErrorNoStatus is like Error(), but does not write a status message.
 func ErrorNoStatus(w io.Writer, err error) {
+	if isConnectionClose(err) {
+		return
+	}
+
 	msg := err.Error()
 
 	var errTyped interface {
@@ -47,6 +51,10 @@ func ErrorNoStatus(w io.Writer, err error) {
 // If the error does not have a Type() string message, it is handled as 500er.
 // In other case, it is handled as 400er.
 func Error(w http.ResponseWriter, err error) {
+	if isConnectionClose(err) {
+		return
+	}
+
 	var errTyped interface {
 		error
 		Type() string
@@ -60,4 +68,20 @@ func Error(w http.ResponseWriter, err error) {
 	w.WriteHeader(status)
 	icclog.Debug("HTTP: Returning status %d", status)
 	ErrorNoStatus(w, err)
+}
+
+func isConnectionClose(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		// Client closes connection.
+		return true
+	}
+
+	var closing interface {
+		Closing()
+	}
+	if errors.As(err, &closing) {
+		// Server is shutting down.
+		return true
+	}
+	return false
 }
