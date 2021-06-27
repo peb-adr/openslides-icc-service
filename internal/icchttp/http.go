@@ -85,3 +85,17 @@ func isConnectionClose(err error) bool {
 	}
 	return false
 }
+
+// AuthMiddleware checks the user id of the request.
+func AuthMiddleware(next http.Handler, auth Authenticater) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, err := auth.Authenticate(w, r)
+		if err != nil {
+			w.WriteHeader(401)
+			ErrorNoStatus(w, iccerror.NewMessageError(iccerror.ErrNotAllowed, "Anonymous user can not receive icc messages."))
+			return
+		}
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
+}
