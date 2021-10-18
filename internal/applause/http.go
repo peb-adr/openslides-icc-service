@@ -2,9 +2,10 @@ package applause
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
 	"github.com/OpenSlides/openslides-icc-service/internal/icchttp"
@@ -12,7 +13,7 @@ import (
 
 // Sender saves the applause.
 type Sender interface {
-	Send(meetingID, uid int) error
+	Send(ctx context.Context, meetingID, uid int) error
 }
 
 // HandleSend registers the icc/applause route.
@@ -29,8 +30,14 @@ func HandleSend(mux *http.ServeMux, applause Sender, auth icchttp.Authenticater)
 				return
 			}
 
-			// TODO: Get meetingID from query
-			if err := applause.Send(1, uid); err != nil {
+			meetingStr := r.URL.Query().Get("meeting_id")
+			meetingID, err := strconv.Atoi(meetingStr)
+			if err != nil {
+				icchttp.Error(w, iccerror.NewMessageError(iccerror.ErrInvalid, "Query meeting has to be an int."))
+				return
+			}
+
+			if err := applause.Send(r.Context(), meetingID, uid); err != nil {
 				icchttp.Error(w, fmt.Errorf("saving applause: %w", err))
 				return
 			}
@@ -40,7 +47,8 @@ func HandleSend(mux *http.ServeMux, applause Sender, auth icchttp.Authenticater)
 
 // Receive gets applause messages.
 type Receive interface {
-	Receive(ctx context.Context, w io.Writer, meetingID int) error
+	Receive(ctx context.Context, tid uint64, meetingID int) (newTID uint64, msg MSG, err error)
+	CanReceive(ctx context.Context, meetingID, userID int) error
 }
 
 // HandleReceive registers the icc/applause route.
@@ -51,11 +59,33 @@ func HandleReceive(mux *http.ServeMux, applause Receive, auth icchttp.Authentica
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-store, max-age=0")
 
-			// TODO: Can anonymous receive applause?
-			// TODO: Get meetingID from query
-			if err := applause.Receive(r.Context(), w, 1); err != nil {
-				icchttp.Error(w, fmt.Errorf("receiving applause messages: %w", err))
+			meetingStr := r.URL.Query().Get("meeting_id")
+			meetingID, err := strconv.Atoi(meetingStr)
+			if err != nil {
+				icchttp.Error(w, iccerror.NewMessageError(iccerror.ErrInvalid, "Query meeting has to be an int."))
 				return
+			}
+
+			if err := applause.CanReceive(r.Context(), meetingID, auth.FromContext(r.Context())); err != nil {
+				icchttp.Error(w, err)
+				return
+			}
+
+			encoder := json.NewEncoder(w)
+			var tid uint64
+			for {
+				var message MSG
+				tid, message, err = applause.Receive(r.Context(), tid, meetingID)
+				if err != nil {
+					icchttp.ErrorNoStatus(w, fmt.Errorf("receive applause data: %w", err))
+					return
+				}
+
+				if err := encoder.Encode(message); err != nil {
+					icchttp.ErrorNoStatus(w, fmt.Errorf("writing message: %w", err))
+					return
+				}
+				w.(http.Flusher).Flush()
 			}
 		},
 	)
