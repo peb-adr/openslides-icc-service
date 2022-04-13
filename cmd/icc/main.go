@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 
 	"os"
 	"os/signal"
 
 	"github.com/OpenSlides/openslides-icc-service/internal/icclog"
 	"github.com/OpenSlides/openslides-icc-service/internal/run"
+	"golang.org/x/sys/unix"
 )
 
 func main() {
@@ -18,9 +20,10 @@ func main() {
 	defer cancel()
 
 	icclog.SetInfoLogger(log.Default())
-	if os.Getenv("OPENSLIDES_DEVELOPMENT") != "" {
+	if dev, _ := strconv.ParseBool(os.Getenv("OPENSLIDES_DEVELOPMENT")); dev {
 		icclog.SetDebugLogger(log.New(os.Stderr, "DEBUG ", log.LstdFlags))
 	}
+
 	if err := run.Run(ctx, os.Environ(), secret); err != nil {
 		icclog.Info("Error: %v", err)
 	}
@@ -34,7 +37,7 @@ func interruptContext() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt)
+		signal.Notify(sigint, os.Interrupt, unix.SIGTERM)
 		<-sigint
 		cancel()
 
