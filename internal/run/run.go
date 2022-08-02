@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
@@ -73,7 +75,11 @@ func Run(ctx context.Context, environment []string, secret func(name string) (st
 	applause.HandleSend(mux, applauseService, auth)
 
 	listenAddr := ":" + env["ICC_PORT"]
-	srv := &http.Server{Addr: listenAddr, Handler: mux}
+	srv := &http.Server{
+		Addr:        listenAddr,
+		Handler:     mux,
+		BaseContext: func(net.Listener) context.Context { return ctx },
+	}
 
 	// Shutdown logic in separate goroutine.
 	wait := make(chan error)
@@ -120,6 +126,7 @@ func defaultEnv(environment []string) map[string]string {
 
 		"OPENSLIDES_DEVELOPMENT": "false",
 		"MAX_PARALLEL_KEYS":      "1000",
+		"DATASTORE_TIMEOUT":      "3s",
 	}
 
 	for _, value := range environment {
@@ -248,6 +255,21 @@ func buildDatastore(env map[string]string, updater datastore.Updater) (*datastor
 		return nil, fmt.Errorf("environmentvariable MAX_PARALLEL_KEYS has to be a number, not %s", env["MAX_PARALLEL_KEYS"])
 	}
 
-	source := datastore.NewSourceDatastore(url, updater, maxParallel)
+	timeout, err := parseDuration(env["DATASTORE_TIMEOUT"])
+	if err != nil {
+		return nil, fmt.Errorf("environment variable DATASTORE_TIMEOUT has to be a duration like 3s, not %s: %w", env["DATASTORE_TIMEOUT"], err)
+	}
+
+	source := datastore.NewSourceDatastore(url, updater, maxParallel, timeout)
 	return datastore.New(source, nil, nil), nil
+}
+
+func parseDuration(s string) (time.Duration, error) {
+	sec, err := strconv.Atoi(s)
+	if err == nil {
+		// TODO External error
+		return time.Duration(sec) * time.Second, nil
+	}
+
+	return time.ParseDuration(s)
 }
