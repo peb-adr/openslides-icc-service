@@ -10,9 +10,32 @@ browser has to connect to the service with http2 and therefore needs https.
 
 ## Start
 
+The service needs some secrets to run. You can create them with:
+
+```
+mkdir secrets
+printf "password" > secrets/postgres_password
+printf "my_token_key" > secrets/auth_token_key 
+printf "my_cookie_key" > secrets/auth_cookie_key
+```
+
+It also needs a running postgres and redis instance. You can start one with:
+
+```
+docker run  --network host -e POSTGRES_PASSWORD=password -e POSTGRES_USER=openslides -e POSTGRES_DB=openslides postgres:11
+```
+
+and
+
+```
+docker run --network host redis
+```
+
+
 ### With Golang
 
 ```
+export SECRETS_PATH=secrets
 go build ./cmd/icc
 ./icc
 ```
@@ -21,7 +44,7 @@ go build ./cmd/icc
 
 The docker build uses the auth token. Either configure it to use the fake
 services (see environment variables below) or make sure the service inside the
-docker container can connect to redis and the datastore-reader. For example with
+docker container can connect to redis and postgres. For example with
 the docker argument --network host. The auth-secrets have to given as a file.
 
 ```
@@ -31,8 +54,6 @@ printf "my_cookie_key" > auth_cookie_key
 docker run --network host -v $PWD/auth_token_key:/run/secrets/auth_token_key -v $PWD/auth_cookie_key:/run/secrets/auth_cookie_key openslides-icc
 ```
 
-It uses the host network to connect to redis.
-
 
 ### With Auto Restart
 
@@ -41,7 +62,7 @@ To restart the service when ever a source file has shanged, the tool
 
 ```
 go install github.com/githubnemo/CompileDaemon@latest
-CompileDaemon -log-prefix=false -build "go build ./cmd/icc" -command "./icc"
+CompileDaemon -log-prefix=false -build "go build" -command "./openslides-icc-service"
 ```
 
 The make target `build-dev` creates a docker image that uses this tool. The
@@ -145,44 +166,5 @@ The argument meeting_id is required.
 
 ## Configuration
 
-### Environment variables
-
-The Service uses the following environment variables:
-
-* `ICC_PORT`: Lets the service listen on port 9007. The default is
-  `9007`.
-* `ICC_HOST`: The device where the service starts. The default is am
-  empty string which starts the service on any device.
-* `ICC_REDIS_HOST`: The host of the redis instance to save icc messages. The
-  default is `localhost`.
-* `ICC_REDIS_PORT`: The port of the redis instance to save icc messages. The
-  default is `6379`.
-* `DATASTORE_READER_HOST`: Host of the datastore reader. The default is
-  `localhost`.
-* `DATASTORE_READER_PORT`: Port of the datastore reader. The default is `9010`.
-* `DATASTORE_READER_PROTOCOL`: Protocol of the datastore reader. The default is
-  `http`.
-* `MESSAGE_BUS_HOST`: Host of the redis server. The default is `localhost`.
-* `MESSAGE_BUS_PORT`: Port of the redis server. The default is `6379`.
-* `REDIS_TEST_CONN`: Test the redis connection on startup. Disable on the cloud
-  if redis needs more time to start then this service. The default is `true`.
-* `AUTH`: Sets the type of the auth service. `fake` (default) or `ticket`.
-* `AUTH_HOST`: Host of the auth service. The default is `localhost`.
-* `AUTH_PORT`: Port of the auth service. The default is `9004`.
-* `AUTH_PROTOCOL`: Protocol of the auth servicer. The default is `http`.
-* `OPENSLIDES_DEVELOPMENT`: If set, the service starts, even when secrets (see
-  below) are not given. The default is `false`.
-* `MAX_PARALLEL_KEYS`: Max keys that are send in one request to the datastore.
-  The default is `1000`.
-* `DATASTORE_TIMEOUT`: Time until a request to the datastore times out. The
-  default is `3s`.
-
-
-### Secrets
-
-Secrets are filenames in `/run/secrets/`. The service only starts if it can find
-each secret file and read its content. The default values are only used, if the
-environment variable `OPENSLIDES_DEVELOPMENT` is set.
-
-* `auth_token_key`: Key to sign the JWT auth tocken. Default `auth-dev-key`.
-* `auth_cookie_key`: Key to sign the JWT auth cookie. Default `auth-dev-key`.
+The service is configurated with environment variables. See [all environment
+varialbes](environment.md).
