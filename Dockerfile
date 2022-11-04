@@ -19,9 +19,8 @@ FROM base as development
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
 EXPOSE 9012
-ENV AUTH ticket
 
-CMD CompileDaemon -log-prefix=false -build="go build" -command="./icc"
+CMD CompileDaemon -log-prefix=false -build="go build" -command="./openslides-icc-service"
 
 
 # Productive build
@@ -34,6 +33,5 @@ LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-
 
 COPY --from=builder /root/openslides-icc-service .
 EXPOSE 9007
-ENV AUTH ticket
 ENTRYPOINT ["/openslides-icc-service"]
 HEALTHCHECK CMD ["/openslides-icc-service", "health"]
