@@ -112,7 +112,7 @@ func HealthClient(ctx context.Context, useHTTPS bool, host, port string, insecur
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"GET",
-		fmt.Sprintf("%s://%s:%s/system/vote/health", proto, host, port),
+		fmt.Sprintf("%s://%s:%s/system/icc/health", proto, host, port),
 		nil,
 	)
 	if err != nil {
