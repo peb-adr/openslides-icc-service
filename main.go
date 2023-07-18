@@ -123,6 +123,8 @@ func initService(lookup environment.Environmenter) (func(context.Context) error,
 	backgroundTasks = append(backgroundTasks, applauseBackground)
 
 	service := func(ctx context.Context) error {
+		go database.Update(ctx, nil)
+
 		for _, bg := range backgroundTasks {
 			go bg(ctx, handleError)
 		}
