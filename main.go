@@ -24,8 +24,8 @@ import (
 
 var (
 	envICCServicePort = environment.NewVariable("ICC_PORT", "9007", "Port on which the service listen on.")
-	envICCRedisHost   = environment.NewVariable("ICC_REDIS_HOST", "localhost", "The host of the redis instance to save icc messages.")
-	envICCRedisPort   = environment.NewVariable("ICC_REDIS_PORT", "6379", "The port of the redis instance to save icc messages.")
+	envICCRedisHost   = environment.NewVariable("CACHE_HOST", "localhost", "The host of the redis instance to save icc messages.")
+	envICCRedisPort   = environment.NewVariable("CACHE_PORT", "6379", "The port of the redis instance to save icc messages.")
 )
 
 var cli struct {
@@ -111,7 +111,10 @@ func initService(lookup environment.Environmenter) (func(context.Context) error,
 	}
 
 	// Auth Service.
-	authService, authBackground := auth.New(lookup, messageBus)
+	authService, authBackground, err := auth.New(lookup, messageBus)
+	if err != nil {
+		return nil, fmt.Errorf("init auth system: %w", err)
+	}
 	backgroundTasks = append(backgroundTasks, authBackground)
 
 	backend := redis.New(envICCRedisHost.Value(lookup) + ":" + envICCRedisPort.Value(lookup))
