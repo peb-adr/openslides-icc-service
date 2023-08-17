@@ -106,12 +106,27 @@ func isInMeeting(ctx context.Context, fetch *dsfetch.Fetch, userID, meetingID in
 		return true, nil
 	}
 
-	ids, err := fetch.User_GroupIDs(userID, meetingID).Value(ctx)
+	meetingUserIDs, err := fetch.User_MeetingUserIDs(userID).Value(ctx)
 	if err != nil {
-		return false, fmt.Errorf("checking for user groups: %w", err)
+		return false, fmt.Errorf("getting meeting user ids: %w", err)
 	}
 
-	return len(ids) > 0, nil
+	meetingIDs := make([]int, len(meetingUserIDs))
+	for i := 0; i < len(meetingUserIDs); i++ {
+		fetch.MeetingUser_MeetingID(meetingUserIDs[i]).Lazy(&meetingIDs[i])
+	}
+
+	if err := fetch.Execute(ctx); err != nil {
+		return false, fmt.Errorf("getting meeting IDs from user %d: %w", userID, err)
+	}
+
+	for _, mid := range meetingIDs {
+		if mid == meetingID {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // CanReceive returns an error, if the user can not receive applause.
