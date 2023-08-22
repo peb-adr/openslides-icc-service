@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
-	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/environment"
 	messageBusRedis "github.com/OpenSlides/openslides-autoupdate-service/pkg/redis"
 	"github.com/OpenSlides/openslides-icc-service/internal/applause"
@@ -25,8 +24,8 @@ import (
 
 var (
 	envICCServicePort = environment.NewVariable("ICC_PORT", "9007", "Port on which the service listen on.")
-	envICCRedisHost   = environment.NewVariable("ICC_REDIS_HOST", "localhost", "The host of the redis instance to save icc messages.")
-	envICCRedisPort   = environment.NewVariable("ICC_REDIS_PORT", "6379", "The port of the redis instance to save icc messages.")
+	envICCRedisHost   = environment.NewVariable("CACHE_HOST", "localhost", "The host of the redis instance to save icc messages.")
+	envICCRedisPort   = environment.NewVariable("CACHE_PORT", "6379", "The port of the redis instance to save icc messages.")
 )
 
 var cli struct {
@@ -106,14 +105,16 @@ func initService(lookup environment.Environmenter) (func(context.Context) error,
 	messageBus := messageBusRedis.New(lookup)
 
 	// Datastore Service.
-	datastoreService, dsBackground, err := datastore.New(lookup, messageBus)
+	database, err := applause.Flow(lookup, messageBus)
 	if err != nil {
-		return nil, fmt.Errorf("init datastore: %w", err)
+		return nil, fmt.Errorf("init database: %w", err)
 	}
-	backgroundTasks = append(backgroundTasks, dsBackground)
 
 	// Auth Service.
-	authService, authBackground := auth.New(lookup, messageBus)
+	authService, authBackground, err := auth.New(lookup, messageBus)
+	if err != nil {
+		return nil, fmt.Errorf("init auth system: %w", err)
+	}
 	backgroundTasks = append(backgroundTasks, authBackground)
 
 	backend := redis.New(envICCRedisHost.Value(lookup) + ":" + envICCRedisPort.Value(lookup))
@@ -121,10 +122,12 @@ func initService(lookup environment.Environmenter) (func(context.Context) error,
 	notifyService, notifyBackground := notify.New(backend)
 	backgroundTasks = append(backgroundTasks, notifyBackground)
 
-	applauseService, applauseBackground := applause.New(backend, datastoreService)
+	applauseService, applauseBackground := applause.New(backend, database)
 	backgroundTasks = append(backgroundTasks, applauseBackground)
 
 	service := func(ctx context.Context) error {
+		go database.Update(ctx, nil)
+
 		for _, bg := range backgroundTasks {
 			go bg(ctx, handleError)
 		}

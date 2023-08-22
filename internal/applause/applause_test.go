@@ -76,7 +76,10 @@ func TestApplauseCanReceiveInMeeting(t *testing.T) {
 		ds := dsmock.Stub(dsmock.YAMLData(`---
 		meeting/1/enable_anonymous: false
 
-		user/5/group_$1_ids: [1]
+		user/5/meeting_user_ids: [50]
+		meeting_user/50:
+			meeting_id: 1
+			user_id: 5
 		`))
 		app, _ := applause.New(backend, ds)
 
