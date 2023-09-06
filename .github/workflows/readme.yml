@@ -19,7 +19,7 @@ jobs:
       id: go
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: create secrets
       run: |
@@ -30,7 +30,9 @@ jobs:
 
     - name: Start With golang
       run: |
-        export SECRETS_PATH=secrets
+        export DATABASE_PASSWORD_FILE=secrets/postgres_password
+        export AUTH_TOKEN_KEY_FILE=secrets/auth_token_key
+        export AUTH_COOKIE_KEY_FILE=secrets/auth_cookie_key
         go build
         timeout --preserve-status --signal=SIGINT 2s ./openslides-icc-service
 

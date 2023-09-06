@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore/dsfetch"
+	"github.com/OpenSlides/openslides-autoupdate-service/pkg/datastore/flow"
 	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
 	"github.com/ostcar/topic"
 )
@@ -36,11 +36,11 @@ type Backend interface {
 type Applause struct {
 	backend   Backend
 	topic     *topic.Topic[string]
-	datastore datastore.Getter
+	datastore flow.Getter
 }
 
 // New returns an initialized state of the notify service.
-func New(b Backend, db datastore.Getter) (*Applause, func(context.Context, func(error))) {
+func New(b Backend, db flow.Getter) (*Applause, func(context.Context, func(error))) {
 	notify := Applause{
 		backend:   b,
 		topic:     topic.New[string](),
@@ -106,12 +106,27 @@ func isInMeeting(ctx context.Context, fetch *dsfetch.Fetch, userID, meetingID in
 		return true, nil
 	}
 
-	ids, err := fetch.User_GroupIDs(userID, meetingID).Value(ctx)
+	meetingUserIDs, err := fetch.User_MeetingUserIDs(userID).Value(ctx)
 	if err != nil {
-		return false, fmt.Errorf("checking for user groups: %w", err)
+		return false, fmt.Errorf("getting meeting user ids: %w", err)
 	}
 
-	return len(ids) > 0, nil
+	meetingIDs := make([]int, len(meetingUserIDs))
+	for i := 0; i < len(meetingUserIDs); i++ {
+		fetch.MeetingUser_MeetingID(meetingUserIDs[i]).Lazy(&meetingIDs[i])
+	}
+
+	if err := fetch.Execute(ctx); err != nil {
+		return false, fmt.Errorf("getting meeting IDs from user %d: %w", userID, err)
+	}
+
+	for _, mid := range meetingIDs {
+		if mid == meetingID {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // CanReceive returns an error, if the user can not receive applause.
@@ -121,7 +136,6 @@ func (a *Applause) CanReceive(ctx context.Context, meetingID, userID int) error 
 		anonymousEnabled, err := fetcher.Meeting_EnableAnonymous(meetingID).Value(ctx)
 		if err != nil {
 			return fmt.Errorf("fetching anonymous enabled: %w", err)
-
 		}
 		if !anonymousEnabled {
 			return iccerror.NewMessageError(iccerror.ErrNotAllowed, "Anonymous is not enabled")
