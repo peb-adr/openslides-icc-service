@@ -46,6 +46,7 @@ func HandleReceive(mux *http.ServeMux, notify Receiver, auth icchttp.Authenticat
 		cid, next := notify.Receive(meetingID, uid)
 
 		icclog.Debug("HTTP Recieve from user %d, channel id: %s", uid, cid)
+		defer icclog.Debug("Closed HTTP Recieve from user %d, channel id: %s", uid, cid)
 
 		// Send channel id.
 		if _, err := fmt.Fprintf(w, `{"channel_id": "%s"}`+"\n", cid); err != nil {

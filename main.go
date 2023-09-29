@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/environment"
@@ -98,6 +99,10 @@ func buildDocu() error {
 //
 // Returns a the service as callable.
 func initService(lookup environment.Environmenter) (func(context.Context) error, error) {
+	if devMode, _ := strconv.ParseBool(environment.EnvDevelopment.Value(lookup)); devMode {
+		icclog.SetDebugLogger(log.Default())
+	}
+
 	var backgroundTasks []func(context.Context, func(error))
 	listenAddr := ":" + envICCServicePort.Value(lookup)
 
