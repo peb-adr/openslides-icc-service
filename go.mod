@@ -4,8 +4,8 @@ go 1.22
 
 require (
 	github.com/OpenSlides/openslides-autoupdate-service v0.4.1-0.20240215065743-ed5556257712
-	github.com/alecthomas/kong v0.8.1
-	github.com/gomodule/redigo v1.9.1
+	github.com/alecthomas/kong v0.9.0
+	github.com/gomodule/redigo v1.9.2
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/ostcar/topic v0.4.1
 )
@@ -27,7 +27,7 @@ require (
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
-	github.com/jackc/pgx/v5 v5.5.3 // indirect
+	github.com/jackc/pgx/v5 v5.5.4 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
