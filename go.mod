@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/OpenSlides/openslides-autoupdate-service v0.4.1-0.20240215065743-ed5556257712
-	github.com/alecthomas/kong v1.1.0
+	github.com/alecthomas/kong v1.4.0
 	github.com/gomodule/redigo v1.9.2
 	github.com/ory/dockertest/v3 v3.11.0
 	github.com/ostcar/topic v0.4.1
@@ -22,7 +22,7 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
