@@ -7,7 +7,7 @@ require (
 	github.com/gomodule/redigo v1.9.2
 	github.com/ory/dockertest/v3 v3.11.0
 	github.com/ostcar/topic v0.4.1
-	github.com/peb-adr/openslides-go v0.0.2-0.20250227160635-6d88fb66048f
+	github.com/peb-adr/openslides-go v0.0.2-0.20250305171853-94b50e4c5c69
 )
 
 require (
