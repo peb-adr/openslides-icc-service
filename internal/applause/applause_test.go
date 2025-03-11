@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/OpenSlides/openslides-go/datastore/dsmock"
+	"github.com/peb-adr/openslides-go/datastore/dsmock"
 	"github.com/OpenSlides/openslides-icc-service/internal/applause"
 	"github.com/OpenSlides/openslides-icc-service/internal/iccerror"
 )
